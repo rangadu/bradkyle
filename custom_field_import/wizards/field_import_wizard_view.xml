@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--Field import wizard form view-->
+    <record model="ir.ui.view" id="field_import_wizard_view_form">
+        <field name="name">field.import.wizard.view.form</field>
+        <field name="model">field.import.wizard</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="Import Fields">
+                <sheet>
+                    <group>
+                        <group string="Import File">
+                            <field name="file" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                        </group>
+                        <group string="Download Templates">
+                            <div colspan="4" class="text-center">
+                                <button name="download_templates" type="object" string="Excel Template" class="oe_highlight mr-2"/>
+                                <button name="download_templates" type="object" string="CSV Template" class="oe_highlight" context="{'csv': 1}"/>
+                            </div>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_import" type="object" string="Import" class="oe_highlight"/>
+                    <button string="Discard" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!--Action view field import wizard-->
+    <record model="ir.actions.act_window" id="action_view_field_import_wizard">
+        <field name="name">Import Fields</field>
+        <field name="res_model">field.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <!--TODO: Implement to view all models-->
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_view_types">form</field>
+    </record>
+
+</odoo>

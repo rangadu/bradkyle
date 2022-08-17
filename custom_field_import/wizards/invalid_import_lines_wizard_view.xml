@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--Invalid import line wizard form view-->
+    <record model="ir.ui.view" id="invalid_import_lines_wizard_view_form">
+        <field name="name">invalid.import.lines.wizard.view.form</field>
+        <field name="model">invalid.import.lines.wizard</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="Import Success">
+                <sheet>
+                    <field name="successful" invisible="1"/>
+                    <!--Success message-->
+                    <div class="alert alert-success text-center" role="alert" colspan="4">
+                        <span attrs="{'invisible': [('successful', '=', False)]}">
+                            Import success!
+                        </span>
+                        <!--Successfully imported lines message-->
+                        <span attrs="{'invisible': [('successful', '=', True)]}">
+                            <field name="successful_lines_message" nolabel="1" readonly="1"/>
+                        </span>
+                    </div>
+                    <!--Error message-->
+                    <div class="alert alert-danger text-center" role="alert" colspan="4" attrs="{'invisible': [('successful', '=', True)]}">
+                        Errors occurred when importing following lines!
+                    </div>
+                    <!--Error description-->
+                    <separator string="Invalid Lines" colspan="4" attrs="{'invisible': [('successful', '=', True)]}"/>
+                    <field name="line_ids" attrs="{'invisible': [('successful', '=', True)]}">
+                        <tree mode="tree" edit="false" delete="false" create="false">
+                            <field name="file"/>
+                            <field name="line"/>
+                            <field name="reason"/>
+                        </tree>
+                        <form edit="false" delete="false" create="false">
+                            <sheet>
+                                <group>
+                                    <group>
+                                        <field name="file" readonly="1"/>
+                                        <field name="line" readonly="1"/>
+                                    </group>
+                                    <group>
+                                        <field name="reason" readonly="1"/>
+                                    </group>
+                                </group>
+                            </sheet>
+                        </form>
+                    </field>
+                </sheet>
+                <footer>
+                    <button string="Done" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

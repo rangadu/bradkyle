@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+
+custom_field_import.access_field_import_wizard,access_field_import_wizard,custom_field_import.model_field_import_wizard,base.group_user,1,1,1,1
+custom_field_import.access_invalid_import_lines_wizard,access_invalid_import_lines_wizard,custom_field_import.model_invalid_import_lines_wizard,base.group_user,1,1,1,1
+custom_field_import.access_invalid_import_lines,access_invalid_import_lines,custom_field_import.model_invalid_import_lines,base.group_user,1,1,1,1
