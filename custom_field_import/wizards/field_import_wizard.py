@@ -44,17 +44,38 @@ class FieldImportWizard(models.Model):
                         line_skipped = False
                         for rec in cell_data:
                             # Append data
-                            if sheet.cell(row, rec).value != '':
+                            if sheet.cell(row, rec).value != '' or (cell_data[rec] == 'selection_values' and sheet.cell(row, 2).value == 'selection'):
                                 # Check name field is valid
                                 if cell_data[rec] == 'name' and not sheet.cell(row, rec).value.startswith('x_'):
                                     skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field name %s, field name must be starts with x_' % sheet.cell(row, rec).value))
                                     line_skipped = True
                                     continue
                                 # Check field type field is valid
-                                elif cell_data[rec] == 'field_type' and (sheet.cell(row, rec).value, sheet.cell(row, rec).value) not in ShCustomFieldModel.get_field_types(self):
-                                    skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field type %s' % sheet.cell(row, rec).value))
-                                    line_skipped = True
-                                    continue
+                                elif cell_data[rec] == 'field_type':
+                                    if (sheet.cell(row, rec).value, sheet.cell(row, rec).value) not in ShCustomFieldModel.get_field_types(self):
+                                        skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field type %s' % sheet.cell(row, rec).value))
+                                        line_skipped = True
+                                        continue
+                                    elif sheet.cell(row, rec).value in ['many2many', 'many2one'] and sheet.cell(row, 3).value not in self.env['ir.model'].search([]).mapped('model'):
+                                        skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid model %s' % sheet.cell(row, 3).value))
+                                        line_skipped = True
+                                        continue
+                                # Assign model
+                                elif cell_data[rec] == 'ref_model_id':
+                                    model_id = self.env['ir.model'].search([('model', '=', sheet.cell(row, rec).value)], limit=1)
+                                    if model_id:
+                                        data.update({cell_data[rec]: model_id.id})
+                                        continue
+                                # Check selection values
+                                elif cell_data[rec] == 'selection_values':
+                                    if sheet.cell(row, 2).value == 'selection':
+                                        values = sheet.cell(row, rec).value.split(',')
+                                        if not bool(sheet.cell(row, rec).value):
+                                            skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid data for selection values %s. Selection values must be seperated with commas. eg: val 1, val 2, val 3' % sheet.cell(row, rec).value))
+                                            line_skipped = True
+                                        else:
+                                            data.update({cell_data[rec]: [(0, 0, {'value': x.lower(), 'name': x.title()}) for x in values]})
+                                        continue
                                 # Check tab list field is valid
                                 elif cell_data[rec] == 'tab_list' and (sheet.cell(row, rec).value, sheet.cell(row, rec).value) not in ShCustomFieldModel.get_tab_list(self):
                                     skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid tab %s' % sheet.cell(row, rec).value))
@@ -118,17 +139,39 @@ class FieldImportWizard(models.Model):
                         line_skipped = False
                         for rec in cell_data:
                             # Append data
-                            if row[rec] != '':
+                            if row[rec] != '' or (cell_data[rec] == 'selection_values' and row[2] == 'selection'):
                                 # Check name field is valid
                                 if cell_data[rec] == 'name' and not row[rec].startswith('x_'):
                                     skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field name %s, field name must be starts with x_' % row[rec]))
                                     line_skipped = True
                                     continue
                                 # Check field type field is valid
-                                elif cell_data[rec] == 'field_type' and (row[rec], row[rec]) not in ShCustomFieldModel.get_field_types(self):
-                                    skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field type %s' % row[rec]))
-                                    line_skipped = True
-                                    continue
+                                elif cell_data[rec] == 'field_type':
+                                    if (row[rec], row[rec]) not in ShCustomFieldModel.get_field_types(self):
+                                        skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid field type %s' % row[rec]))
+                                        line_skipped = True
+                                        continue
+                                    elif row[rec] in ['many2many', 'many2one'] and row[3] not in self.env['ir.model'].search([]).mapped('model'):
+                                        skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid model %s' % row[rec]))
+                                        line_skipped = True
+                                        continue
+                                # Assign model
+                                elif cell_data[rec] == 'ref_model_id':
+                                    model_id = self.env['ir.model'].search([('model', '=', row[rec])], limit=1)
+                                    if model_id:
+                                        data.update({cell_data[rec]: model_id.id})
+                                        continue
+                                # Check selection values
+                                elif cell_data[rec] == 'selection_values':
+                                    if row[2] == 'selection':
+                                        values = row[rec].split(',')
+                                        if not bool(values):
+                                            skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid data for selection values %s. Selection values must be seperated with commas. eg: val 1, val 2, val 3' % row[rec]))
+                                            line_skipped = True
+                                        else:
+                                            data.update({cell_data[rec]: [
+                                                (0, 0, {'value': x.lower(), 'name': x.title()}) for x in values]})
+                                        continue
                                 # Check tab list field is valid
                                 elif cell_data[rec] == 'tab_list' and (row[rec], row[rec]) not in ShCustomFieldModel.get_tab_list(self):
                                     skipped_line_no.append(self._prepare_skipped_line(counter, file_name, 'Invalid tab %s' % row[rec]))
@@ -179,9 +222,32 @@ class FieldImportWizard(models.Model):
 
     def _process_data(self, data):
         """
-        Processing imported data
+        Processing imported data and create fields
         """
-        pass
+        custom_field_model_obj = self.env['sh.custom.field.model']
+        for rec in data:
+            active_model = self._context.get('active_model', False)
+            active_model_id = self.env['ir.model'].search([('model', '=', active_model)])
+            rec_data = [{
+                'name': rec.get('name', False),
+                'field_description': rec.get('field_description', False),
+                'field_type': rec.get('field_type', False),
+                'ref_model_id': rec.get('ref_model_id', False),
+                'tab_list': rec.get('tab_list', False),
+                'sh_position_field': rec.get('sh_position_field', False),
+                'sh_position': rec.get('sh_position', False),
+                'field_help': rec.get('field_help', False),
+                'required': rec.get('required', False),
+                'copied': rec.get('copied', False),
+                'sh_selection_ids': rec.get('selection_values', False),
+                'model': active_model,
+                'model_id': active_model_id.id,
+                'parent_model': active_model,
+                'parent_view_id': self.env['ir.ui.view'].sudo().default_view(active_model, 'form'),
+            }]
+            custom_field = custom_field_model_obj.sudo().with_context(self._context).create(rec_data)
+            custom_field.onchage_sh_position_field()
+            custom_field.create_fields()
 
     def action_import(self):
         """
@@ -202,22 +268,25 @@ class FieldImportWizard(models.Model):
             except Exception as error:
                 raise ValidationError(_("Following error occurred when importing file:\n\n%s" % error))
 
-        invalid_lines = []
         if self.file:
             # Read, extract and process field data
             cell_data = {
                 0: 'name',
                 1: 'field_description',
                 2: 'field_type',
-                3: 'tab_list',
-                4: 'sh_position_field',
-                5: 'sh_position',
-                6: 'field_help',
-                7: 'required',
-                8: 'copied',
+                3: 'ref_model_id',
+                4: 'tab_list',
+                5: 'sh_position_field',
+                6: 'sh_position',
+                7: 'field_help',
+                8: 'required',
+                9: 'copied',
+                10: 'selection_values'
             }
             required_columns = ['name', 'field_description', 'field_type', 'sh_position_field', 'sh_position']
             data, invalid_lines = _get_data(self.file, cell_data, self.file_name, required_columns)
+            # Process data
+            self._process_data(data)
         else:
             raise UserError(_('Please add a file to import!'))
 
@@ -239,7 +308,6 @@ class FieldImportWizard(models.Model):
             'target': 'new',
         }
 
-    # Download template files
     def download_templates(self):
         """
         Download the sample templates
@@ -249,292 +317,4 @@ class FieldImportWizard(models.Model):
             'type': 'ir.actions.act_url',
             'name': 'Sample Import Template',
             'url': '/custom_field_import/static/src/samples/' + file_name + '?download=true',
-        }
-
-    def create_fields(self, field_data=None):
-        """
-        Create fields from the data coming from excel/ csv file
-        """
-        if field_data.get('tab_list', False) and field_data.get('sh_position_field', False):
-            raise UserError("Please Select Either Tab or Field !")
-
-        if not field_data.get('tab_list', False) and not field_data.get('sh_position_field', False):
-            raise UserError("Please Select Tab or Field !")
-        groups_obj = self.env['res.groups'].search([])
-        grp_str = ''
-        cnt = 0
-
-        for res_grp in groups_obj:
-            for fld_grp in field_data.get('groups', False):
-
-                dict = fld_grp.get_external_id()
-                for k, v in dict.items():
-
-                    if res_grp.id == k:
-                        if cnt == 0:
-                            grp_str += v
-                        else:
-                            grp_str += ',' + str(v)
-
-                        cnt += 1
-        if field_data.get('sh_position_field', False):
-            if not field_data.get('sh_position', False):
-                raise UserError("Please Select Position !")
-
-        vals = {
-            'name': field_data.get('name', False),
-            'field_description': field_data.get('field_description', False),
-            'model_id': field_data.get('model_id', False),
-            'help': field_data.get('field_help', False),
-            'ttype': field_data.get('field_type', False),
-            'relation': field_data.get('ref_model_id', False),
-            'required': field_data.get('required', False),
-            'copied': field_data.get('copied', False),
-            'domain': field_data.get('task_domain', False),
-        }
-        if field_data.get('field_type', False) == 'color':
-            vals.update({'ttype': 'char'})
-        if field_data.get('field_type', False) == 'signature':
-            vals.update({'ttype': 'binary'})
-        ir_mdl_flds_obj = self.env['ir.model.fields'].sudo().create(vals)
-
-        # Need to create record for ir model field selection----------
-        if field_data.get('sh_selection_ids', False):
-            field_selection_obj = self.env['ir.model.fields.selection']
-            for selection_id in field_data.get('sh_selection_ids', False):
-                field_selection_obj.create({
-                    'field_id': ir_mdl_flds_obj.id,
-                    'value': selection_id.value,
-                    'name': selection_id.name,
-                    'sequence': selection_id.sequence
-                })
-
-        # FIXME from here
-        if ir_mdl_flds_obj:
-            self.ir_model_fields_obj = ir_mdl_flds_obj.id
-
-        if self.inherit_view_obj:
-            inherit_id = self.inherit_view_obj
-        else:
-            #             inherit_id = self.env.ref('project.edit_project')
-            inherit_id = self.parent_view_id
-        group_str_field_arch_base = _('<?xml version="1.0"?>'
-                                      '<data>'
-                                      '<field name="%s" position="%s">'
-                                      '<field name="%s" groups="%s" widget="%s"/>'
-                                      '</field>'
-                                      '</data>')
-
-        group_str_tab_arch_base = _('<?xml version="1.0"?>'
-                                    '<data>'
-                                    '<xpath expr="//form/sheet/notebook/page[@name=\'%s\']/group" position="inside">'
-                                    '<group><field name="%s" groups="%s" widget="%s"/></group>'
-                                    '</xpath>'
-                                    '</data>')
-
-        no_group_str_field_arch_base = _('<?xml version="1.0"?>'
-                                         '<data>'
-                                         '<field name="%s" position="%s">'
-                                         '<field name="%s" widget="%s"/>'
-                                         '</field>'
-                                         '</data>')
-
-        no_group_str_tab_arch_base = _('<?xml version="1.0"?>'
-                                       '<data>'
-                                       '<xpath expr="//form/sheet/notebook/page[@name=\'%s\']/group" position="inside">'
-                                       '<group><field name="%s" widget="%s"/></group>'
-                                       '</xpath>'
-                                       '</data>')
-
-        if self.field_type == 'selection' and self.widget_selctn_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_selctn_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_selctn_selection)
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_selctn_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_selctn_selection)
-
-        elif self.field_type == 'char' and self.widget_char_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_char_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_char_selection)
-
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_char_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_char_selection)
-        elif self.field_type == 'float' and self.widget_float_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_float_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_float_selection)
-
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_float_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_float_selection)
-
-        elif self.field_type == 'text' and self.widget_text_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_text_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_text_selection)
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_text_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_text_selection)
-
-        elif self.field_type == 'binary' and self.widget_binary_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_binary_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_binary_selection)
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_binary_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_binary_selection)
-
-        elif self.field_type == 'many2many' and self.widget_m2m_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_m2m_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_m2m_selection)
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_m2m_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_m2m_selection)
-
-        elif self.field_type == 'many2one' and self.widget_m2o_selection:
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, self.widget_m2o_selection)
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, self.widget_m2o_selection)
-
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, self.widget_m2o_selection)
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, self.widget_m2o_selection)
-        elif self.field_type == 'color':
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, 'color')
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, 'color')
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, 'color')
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, 'color')
-
-        elif self.field_type == 'signature':
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, grp_str, 'signature')
-                else:
-                    arch_base = group_str_tab_arch_base % (
-                        self.tab_list, self.name, grp_str, 'signature')
-            else:
-                if self.sh_position_field:
-                    arch_base = no_group_str_field_arch_base % (
-                        self.sh_position_field.name, self.sh_position, self.name, 'signature')
-                else:
-                    arch_base = no_group_str_tab_arch_base % (
-                        self.tab_list, self.name, 'signature')
-
-        else:  # Other Field Types
-            if grp_str:
-                if self.sh_position_field:
-                    arch_base = _('<?xml version="1.0"?>'
-                                  '<data>'
-                                  '<field name="%s" position="%s">'
-                                  '<field name="%s" groups="%s"/>'
-                                  '</field>'
-                                  '</data>') % (self.sh_position_field.name, self.sh_position, self.name, grp_str)
-                else:
-                    arch_base = _('<?xml version="1.0"?>'
-                                  '<data>'
-                                  '<xpath expr="//form/sheet/notebook/page[@name=\'%s\']/group" position="inside">'
-                                  '<group><field name="%s" groups="%s" /></group>'
-                                  '</xpath>'
-                                  '</data>') % (self.tab_list, self.name, grp_str)
-            else:
-                if self.sh_position_field:
-                    arch_base = _('<?xml version="1.0"?>'
-                                  '<data>'
-                                  '<field name="%s" position="%s">'
-                                  '<field name="%s"/>'
-                                  '</field>'
-                                  '</data>') % (self.sh_position_field.name, self.sh_position, self.name)
-                else:
-                    arch_base = _('<?xml version="1.0"?>'
-                                  '<data>'
-                                  '<xpath expr="//form/sheet/notebook/page[@name=\'%s\']/group" position="inside">'
-                                  '<group><field name="%s"/></group>'
-                                  '</xpath>'
-                                  '</data>') % (self.tab_list, self.name)
-
-        model = self.parent_model
-        irui_vew_obj = self.env['ir.ui.view'].sudo().create({'name': 'custom.dynamic.fields',
-                                                             'type': 'form',
-                                                             'model': model,
-                                                             'mode': 'extension',
-                                                             'inherit_id': inherit_id.id,
-                                                             'arch_base': arch_base,
-                                                             'active': True})
-        if irui_vew_obj:
-            self.ir_ui_view_obj = irui_vew_obj.id
-
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'reload',
         }
